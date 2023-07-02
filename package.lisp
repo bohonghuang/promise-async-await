@@ -20,5 +20,8 @@
                   (then ,promise ,cc)
                   (tick ,promise 0))))))
 
-(setf (fdefinition 'ajoin) (fdefinition 'all)
-      (fdefinition 'aselect) (fdefinition 'any))
+(defun aselect (&rest awaitables)
+  (any awaitables))
+
+(defun ajoin (&rest awaitables)
+  (all awaitables))

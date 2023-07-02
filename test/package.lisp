@@ -33,8 +33,8 @@
 
 (defun sleep-1234-aselect-ajoin ()
   (async
-    (apply #'+ (cons (await (aselect (list (sleep-async 1/100) (sleep-async 4/100))))
-                     (await (ajoin (list (sleep-async 2/100) (sleep-async 3/100))))))))
+    (apply #'+ (cons (await (aselect (sleep-async 1/100) (sleep-async 4/100)))
+                     (await (ajoin (sleep-async 2/100) (sleep-async 3/100)))))))
 
 (define-test simple :parent suite
   (org.shirakumo.promise:clear)
