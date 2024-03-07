@@ -53,3 +53,32 @@
   (loop :while org.shirakumo.promise::*promises*
         :do (org.shirakumo.promise:tick-all 0.01)
             (sleep 0.01)))
+
+(defvar *sp1* 0)
+(defvar *sp2*)
+(defvar *sp3*)
+
+(define-test special-variable :parent suite :depends-on (sleep)
+  (org.shirakumo.promise:clear)
+  (let ((*sp1* 1) (*sp2* 2) (*sp3* 3) (*sp4* 4))
+    (declare (special *sp4*))
+    (let ((*async-continuation-constructor* (async-special-variable-binder (*sp1* *sp2*))))
+      (let ((*async-continuation-constructor* (async-special-variable-binder (*sp3* *sp4*))))
+        (async
+          (is = 1 *sp1*)
+          (is = 2 *sp2*)
+          (is = 3 *sp3*)
+          (is = 4 *sp4*)
+          (await (sleep-async 1/100))
+          (is = 1 *sp1*)
+          (is = 2 *sp2*)
+          (is = 3 *sp3*)
+          (is = 4 *sp4*)
+          (await (sleep-async 1/100))
+          (is = 1 *sp1*)
+          (is = 2 *sp2*)
+          (is = 3 *sp3*)
+          (is = 4 *sp4*)))))
+  (loop :while org.shirakumo.promise::*promises*
+        :do (org.shirakumo.promise:tick-all 0.01)
+            (sleep 0.01)))
