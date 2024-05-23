@@ -82,3 +82,14 @@
   (loop :while org.shirakumo.promise::*promises*
         :do (org.shirakumo.promise:tick-all 0.01)
             (sleep 0.01)))
+
+(define-test nest :parent suite :depends-on (sleep)
+  (org.shirakumo.promise:clear)
+  (async
+    (let ((task-1 (async (loop :repeat 5 :do (await (sleep-async 0.05)) :sum 1)))
+          (task-2 (async (loop :repeat 5 :do (await (sleep-async 0.05)) :sum 2))))
+      (let ((result (reduce #'+ (await (ajoin task-1 task-2)))))
+        (is = 15 result))))
+  (loop :while org.shirakumo.promise::*promises*
+        :do (org.shirakumo.promise:tick-all 0.01)
+            (sleep 0.01)))
