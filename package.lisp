@@ -1,7 +1,7 @@
 (defpackage promise-async-await
   (:use #:cl #:alexandria #:cl-cont #:cl-cont-optimizer
         #:org.shirakumo.promise)
-  (:export #:async #:await #:ajoin #:aselect #:*async-continuation-constructor* #:async-special-variable-binder))
+  (:export #:async #:await #:ajoin #:aselect #:alet))
 
 (in-package #:promise-async-await)
 
@@ -51,3 +51,38 @@
 
 (defun ajoin (&rest awaitables)
   (all awaitables))
+
+(defun body-declarations (body)
+  (loop :for forms :on body
+        :if (and (listp (car forms)) (eq (caar forms) 'declare))
+          :collect (car forms) :into declarations
+        :else
+          :return (values declarations forms)))
+
+(body-declarations '((declare (type fixnum a))
+                     (values t)))
+
+(defmacro alet (bindings &body body)
+  (multiple-value-bind (declarations body) (body-declarations body)
+    (let ((spvars (loop :for (nil . clauses) :in declarations
+                        :append (loop :for (declaration-type . vars) :in clauses
+                                      :when (eq declaration-type 'special)
+                                        :append (mapcar (curry #'make-list 2 :initial-element) vars)))))
+      `(let ,(loop :for binding :in bindings
+                   :for (var val) := (ensure-cons binding)
+                   :for spvar-cons := (assoc var spvars)
+                   :if spvar-cons
+                     :do (setf (cdr spvar-cons) (list (setf var (gensym (symbol-name var)))))
+                   :else
+                     :do (assert (not (boundp var)) () "Special variable ~A must be declared as SPECIAL explicitly." var)
+                   :unless (eq var val)
+                     :collect `(,var ,val))
+         ,@declarations
+         ,@(if spvars
+               (with-gensyms (f cc)
+                 `((let ((,f (lambda (,cc . ,(mapcar #'first spvars)) (funcall ,cc (progn . ,body)))))
+                     (let/cc ,cc
+                       (progv '(*async-continuation-constructor* . ,(mapcar #'first spvars))
+                           (list (async-special-variable-binder ,(mapcar #'first spvars)) . ,(mapcar #'second spvars))
+                         (funcall ,f ,cc . ,(mapcar #'first spvars)))))))
+               body)))))
